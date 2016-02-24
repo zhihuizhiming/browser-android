@@ -75,7 +75,12 @@ public class BubbleFlowDraggable extends BubbleFlowView implements Draggable {
         setBubbleFlowViewListener(new BubbleFlowView.Listener() {
             @Override
             public void onCenterItemClicked(BubbleFlowView sender, View view) {
-                MainController.get().switchToBubbleView();
+                try {
+                    MainController.get().switchToBubbleView();
+                }
+                catch (NullPointerException exc) {
+                    CrashTracking.logHandledException(exc);
+                }
             }
 
             @Override
@@ -246,6 +251,12 @@ public class BubbleFlowDraggable extends BubbleFlowView implements Draggable {
         return mCurrentTab;
     }
 
+    public void setCurrentTabAsActive() {
+        if (null != mCurrentTab) {
+            setCurrentTab(mCurrentTab);
+        }
+    }
+
     private void setCurrentTab(TabView tab) {
         mCurrentTabResumeEvent.mTab = tab;
         MainApplication.postEvent(getContext(), mCurrentTabResumeEvent);
@@ -323,12 +334,13 @@ public class BubbleFlowDraggable extends BubbleFlowView implements Draggable {
         mDraggableHelper.setExactPos(x, y);
     }
 
-    public TabView openUrlInTab(String url, long urlLoadStartTime, boolean setAsCurrentTab, boolean hasShownAppPicker) {
+    public TabView openUrlInTab(String url, long urlLoadStartTime, boolean setAsCurrentTab, boolean hasShownAppPicker,
+                                boolean performEmptyClick) {
         TabView tabView;
         try {
             LayoutInflater inflater = LayoutInflater.from(getContext());
             tabView = (TabView) inflater.inflate(R.layout.view_tab, null);
-            tabView.configure(url, urlLoadStartTime, hasShownAppPicker);
+            tabView.configure(url, urlLoadStartTime, hasShownAppPicker, performEmptyClick);
         } catch (MalformedURLException e) {
             // TODO: Inform the user somehow?
             return null;

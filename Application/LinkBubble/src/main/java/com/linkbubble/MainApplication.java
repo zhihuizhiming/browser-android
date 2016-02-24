@@ -18,6 +18,7 @@ import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.net.Uri;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Vibrator;
 import android.widget.Toast;
 
@@ -25,9 +26,11 @@ import com.crashlytics.android.Crashlytics;
 import com.linkbubble.Constant.BubbleAction;
 import com.linkbubble.adblock.ABPFilterParser;
 import com.linkbubble.adblock.TPFilterParser;
+import com.linkbubble.adblock.WhiteListCollector;
 import com.linkbubble.adinsert.AdInserter;
 import com.linkbubble.db.DatabaseHelper;
 import com.linkbubble.db.HistoryRecord;
+import com.linkbubble.httpseverywhere.HttpsEverywhere;
 import com.linkbubble.ui.Prompt;
 import com.linkbubble.ui.SearchURLSuggestionsContainer;
 import com.linkbubble.ui.SettingsActivity;
@@ -60,9 +63,11 @@ public class MainApplication extends Application {
     public static boolean sShowingAppPickerDialog = false;
     private static long sTrialStartTime = -1;
 
+    private HttpsEverywhere mHttpsEverywhere = null;
     private ABPFilterParser mABPParser = null;
     private TPFilterParser mTPParser = null;
     private AdInserter mADInserter = null;
+    private WhiteListCollector mWhiteListCollector = null;
     public boolean mAdInserterEnabled = false;
 
     public IconCache mIconCache;
@@ -90,11 +95,16 @@ public class MainApplication extends Application {
         Favicons.attachToContext(this);
         recreateFaviconCache();
 
-        if (Settings.get().isAdBlockEnabled()) {
-            mBus.post(new SettingsMoreActivity.AdBlockTurnOnEvent());
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            if (Settings.get().isAdBlockEnabled()) {
+                mBus.post(new SettingsMoreActivity.AdBlockTurnOnEvent());
+            }
+            if (Settings.get().isTrackingProtectionEnabled()) {
+                mBus.post(new SettingsMoreActivity.TrackingProtectionTurnOnEvent());
+            }
         }
-        if (Settings.get().isTrackingProtectionEnabled()) {
-            mBus.post(new SettingsMoreActivity.TrackingProtectionTurnOnEvent());
+        if (Settings.get().isHttpsEverywhereEnabled()) {
+            mBus.post(new SettingsMoreActivity.HttpsEverywhereTurnOnEvent());
         }
         // Enable ad insertion for Crashlytics builds and disable for play store builds
         ApplicationInfo appInfo = getApplicationInfo();
@@ -102,13 +112,41 @@ public class MainApplication extends Application {
             mAdInserterEnabled = true;
             new DownloadAdInsertionDataAsyncTask().execute();
         }
+        new InitWhiteListCollectorAsyncTask().execute();
 
         CrashTracking.log("MainApplication.onCreate()");
         //checkStrings();
     }
 
+    class InitWhiteListCollectorAsyncTask extends AsyncTask<Void,Void,Long> {
+
+        protected Long doInBackground(Void... params) {
+            initWhiteListCollector();
+
+            return null;
+        }
+    }
+
     public Bus getBus() {
         return mBus;
+    }
+
+    public void enableHttpsEverywhere() {
+        if (null == mHttpsEverywhere) {
+            mHttpsEverywhere = new HttpsEverywhere(this);
+        }
+    }
+
+    public HttpsEverywhere getHttpsEverywhere() { return mHttpsEverywhere; }
+
+    public void initWhiteListCollector() {
+        if (mWhiteListCollector == null) {
+            mWhiteListCollector = new WhiteListCollector(this);
+        }
+    }
+
+    public WhiteListCollector getWhiteListCollector() {
+        return mWhiteListCollector;
     }
 
     public void createTrackingProtectionList() {
@@ -424,7 +462,12 @@ public class MainApplication extends Application {
             CrashTracking.log("post(" + simpleName + ")");
             sLastPostClassName = simpleName;
         }
-        app.getBus().post(event);
+        try {
+            app.getBus().post(event);
+        }
+        catch (RuntimeException exc) {
+            CrashTracking.logHandledException(exc);
+        }
     }
 
     public static void registerForBus(Context context, Object object) {
@@ -544,6 +587,21 @@ public class MainApplication extends Application {
 
         protected Long doInBackground(Void... params) {
             createAdInsertionList();
+
+            return null;
+        }
+    }
+
+    @SuppressWarnings("unused")
+    @Subscribe
+    public void onHttpsEverywhereOn(SettingsMoreActivity.HttpsEverywhereTurnOnEvent event) {
+        new DownloadHttpsEverywhereDataAsyncTask().execute();
+    }
+
+    class DownloadHttpsEverywhereDataAsyncTask extends AsyncTask<Void,Void,Long> {
+
+        protected Long doInBackground(Void... params) {
+            enableHttpsEverywhere();
 
             return null;
         }

@@ -89,6 +89,7 @@ public class Settings {
     public static final String PREFERENCE_WEBVIEW_BATTERY_SAVING_MODE = "preference_webview_battery_save_v2";
     public static final String PREFERENCE_TRACKINGPROTECTION_MODE = "preference_trackingprotection";
     public static final String PREFERENCE_ADBLOCK_MODE = "preference_adblock";
+    public static final String PREFERENCE_HTTPS_EVERYWHERE_MODE = "preference_httpseverywhere";
 
     public static final String PREFERENCE_WEBVIEW_TEXT_ZOOM = "preference_webview_text_zoom2";
     public static final int     PREFERENCE_WEBVIEW_TEXT_ZOOM_MIN = 50;
@@ -284,7 +285,11 @@ public class Settings {
     private void configureDefaultApp(PackageManager packageManager, String urlAsString, String desiredPackageName) {
         try {
             URL url = new URL(urlAsString);
-            final List<ResolveInfo> resolveInfos = getAppsThatHandleUrl(url.toString(), packageManager);
+            List<ResolveInfo> tempResolveInfos = new ArrayList<>();
+            if (!urlAsString.equals(mContext.getString(R.string.empty_bubble_page))) {
+                tempResolveInfos = getAppsThatHandleUrl(urlAsString, packageManager);
+            }
+            final List<ResolveInfo> resolveInfos = tempResolveInfos;
 
             for (ResolveInfo resolveInfo : resolveInfos) {
                 if (resolveInfo.activityInfo != null) {
@@ -720,11 +725,15 @@ public class Settings {
     }
 
     public boolean isTrackingProtectionEnabled() {
-        return mSharedPreferences.getBoolean(PREFERENCE_TRACKINGPROTECTION_MODE, false);
+        return mSharedPreferences.getBoolean(PREFERENCE_TRACKINGPROTECTION_MODE, true);
     }
 
     public boolean isAdBlockEnabled() {
-        return mSharedPreferences.getBoolean(PREFERENCE_ADBLOCK_MODE, false);
+        return mSharedPreferences.getBoolean(PREFERENCE_ADBLOCK_MODE, true);
+    }
+
+    public boolean isHttpsEverywhereEnabled() {
+        return mSharedPreferences.getBoolean(PREFERENCE_HTTPS_EVERYWHERE_MODE, false);
     }
 
     public void setWebViewBatterySaveMode(String mode) {
@@ -915,12 +924,14 @@ public class Settings {
                     } else {
                         // And some special case code for me to ignore alternate builds
                         if (BuildConfig.DEBUG) {
-                            if (info.activityInfo.packageName.equals("com.linkbubble.playstore")) {
+                            if (info.activityInfo.packageName.equals("com.linkbubble.playstore")
+                                    || info.activityInfo.packageName.equals("com.brave.playstore")) {
                                 //Log.d("blerg", "ignore " + info.activityInfo.packageName);
                                 packageOk = false;
                             }
                         } else {
-                            if (info.activityInfo.packageName.equals("com.linkbubble.playstore.dev")) {
+                            if (info.activityInfo.packageName.equals("com.linkbubble.playstore.dev")
+                                    || info.activityInfo.packageName.equals("com.brave.playstore.dev")) {
                                 //Log.d("blerg", "ignore " + info.activityInfo.packageName);
                                 packageOk = false;
                             }

@@ -94,6 +94,10 @@ public class Util {
         "acr.browser.barebones",
         "com.ineedyourservice.RBrowser",
         "com.lastpass.lpandroid",
+        "com.linkbubble.playstore",
+        "com.linkbubble.playstore.dev",
+        "com.brave.playstore",          // Made that temporary(remove when merge to master)
+        "com.brave.playstore.dev",       // Made that temporary(remove when merge to master)
         "arun.com.chromer",
         "com.jiubang.browser",
         "com.uc.browser.hd",
@@ -106,7 +110,7 @@ public class Util {
         "net.fast.web.browser",
         "com.wisesharksoftware.browser",
         "org.hola",
-        "com.brave.playstore"
+        "com.kk.jd.browser2"
     };
 
     public static float clamp(float v0, float v, float v1) {
@@ -630,7 +634,13 @@ public class Util {
     }
 
     public static boolean isValidBrowserPackageName(String packageName) {
-        if (packageName.equals(BuildConfig.APPLICATION_ID) || packageName.contains("com.digitalashes.tappath") || packageName.contains("com.linkbubble")) {
+        if (packageName.equals(BuildConfig.APPLICATION_ID) || packageName.contains("com.digitalashes.tappath")) {
+            return false;
+        }
+        if (BuildConfig.APPLICATION_ID.contains("com.linkbubble") && packageName.contains("com.linkbubble")) {
+            return false;
+        }
+        else if (BuildConfig.APPLICATION_ID.contains("com.brave") && packageName.contains("com.brave")) {
             return false;
         }
 

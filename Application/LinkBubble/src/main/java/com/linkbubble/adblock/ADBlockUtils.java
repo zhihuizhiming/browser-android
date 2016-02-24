@@ -6,7 +6,6 @@ package com.linkbubble.adblock;
 
 import android.content.Context;
 import android.content.SharedPreferences;
-
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -68,19 +67,12 @@ public class ADBlockUtils {
         }
     }
 
-    public static byte[] readData(Context context, String fileName, String urlString, String eTagPrepend, String verNumber) {
-        File dataPath = new File(context.getApplicationInfo().dataDir, verNumber + fileName);
-        boolean fileExists = dataPath.exists();
-        EtagObject previousEtag = ADBlockUtils.getETagInfo(context, eTagPrepend);
-        long milliSeconds = Calendar.getInstance().getTimeInMillis();
-        if (!fileExists || (milliSeconds - previousEtag.mMilliSeconds >= ADBlockUtils.MILLISECONDS_IN_A_DAY)) {
-            ADBlockUtils.downloadDatFile(context, fileExists, previousEtag, milliSeconds, fileName, urlString, eTagPrepend, verNumber);
-        }
-
+    public static byte[] readLocalFile(String path) {
         byte[] buffer = null;
+
         FileInputStream inputStream = null;
         try {
-            inputStream = new FileInputStream(dataPath.getAbsolutePath());
+            inputStream = new FileInputStream(path);
             int size = inputStream.available();
             buffer = new byte[size];
             int n = - 1;
@@ -98,6 +90,23 @@ public class ADBlockUtils {
         return buffer;
     }
 
+    public static byte[] readData(Context context, String fileName, String urlString, String eTagPrepend, String verNumber,
+            boolean downloadOnly) {
+        File dataPath = new File(context.getApplicationInfo().dataDir, verNumber + fileName);
+        boolean fileExists = dataPath.exists();
+        EtagObject previousEtag = ADBlockUtils.getETagInfo(context, eTagPrepend);
+        long milliSeconds = Calendar.getInstance().getTimeInMillis();
+        if (!fileExists || (milliSeconds - previousEtag.mMilliSeconds >= ADBlockUtils.MILLISECONDS_IN_A_DAY)) {
+            ADBlockUtils.downloadDatFile(context, fileExists, previousEtag, milliSeconds, fileName, urlString, eTagPrepend, verNumber);
+        }
+
+        if (downloadOnly) {
+            return null;
+        }
+
+        return readLocalFile(dataPath.getAbsolutePath());
+    }
+
     public static void downloadDatFile(Context context, boolean fileExist, EtagObject previousEtag, long currentMilliSeconds,
                                        String fileName, String urlString, String eTagPrepend, String verNumber) {
         byte[] buffer = null;
@@ -108,6 +117,9 @@ public class ADBlockUtils {
             URL url = new URL(urlString);
             connection = (HttpURLConnection) url.openConnection();
             String etag = connection.getHeaderField("ETag");
+            if (null == etag) {
+                etag = "";
+            }
             boolean downloadFile = true;
             if (fileExist && etag.equals(previousEtag.mEtag)) {
                 downloadFile = false;
